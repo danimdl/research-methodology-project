@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eyetracking Test</title>
+
+<script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
+  
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --accent: #4fffb0;
+    --accent2: #00d4ff;
+    --accent3: #ff6b6b;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --muted2: #9ca3af;
+    --warn: #fbbf24;
+    --danger: #ef4444;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-family: 'DM Serif Display'; font-size: 20px; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--muted2); font-size: 13px; font-family: 'Outfit'; margin-left: 8px; font-weight: 300; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; }
+  .status-dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── HOME ── */
+  #home { background: var(--bg); }
+  .home-inner { max-width: 800px; margin: 0 auto; padding: 60px 32px; flex: 1; }
+  .eyecon { width: 64px; height: 64px; margin-bottom: 28px; }
+  h1.hero { font-family: 'DM Serif Display'; font-size: 42px; line-height: 1.1; color: var(--text); margin-bottom: 12px; }
+  h1.hero em { color: var(--accent); font-style: italic; }
+  .subtitle { font-size: 16px; color: var(--muted2); font-weight: 300; margin-bottom: 40px; max-width: 560px; }
+
+  .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; margin-bottom: 16px; }
+  .info-card h3 { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent2); margin-bottom: 10px; }
+  .info-card p { color: var(--muted2); font-size: 14px; line-height: 1.7; }
+  
+  .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 32px 0; }
+  .test-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; cursor: pointer; transition: border-color .2s, transform .15s; position: relative; overflow: hidden; }
+  .test-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .test-card.selected { border-color: var(--accent); }
+  .test-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; }
+  .test-card.type-a::before { background: var(--accent); }
+  .test-card.type-b::before { background: var(--accent2); }
+  .test-card .badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; display: inline-block; margin-bottom: 12px; }
+  .test-card.type-a .badge { background: rgba(79,255,176,0.1); color: var(--accent); }
+  .test-card.type-b .badge { background: rgba(0,212,255,0.1); color: var(--accent2); }
+  .test-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+  .test-card p { font-size: 13px; color: var(--muted); }
+
+  .btn { background: var(--accent); color: #0a0c10; border: none; padding: 13px 28px; border-radius: var(--radius-sm); font-family: 'Outfit'; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .1s; }
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn:active { transform: scale(0.98); }
+  .btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border2); padding: 11px 22px; border-radius: var(--radius-sm); font-family: 'Outfit'; font-size: 14px; cursor: pointer; transition: background .15s; }
+  .btn-ghost:hover { background: var(--surface2); }
+  .btn-row { display: flex; gap: 12px; align-items: center; margin-top: 28px; }
+
+  /* ── CALIBRATION ── */
+  #calibration { background: #050608; justify-content: center; align-items: center; }
+  .calib-inner { max-width: 680px; width: 100%; text-align: center; padding: 40px; }
+  .calib-inner h2 { font-family: 'DM Serif Display'; font-size: 28px; margin-bottom: 8px; }
+  .calib-inner p { color: var(--muted2); margin-bottom: 32px; font-size: 14px; }
+  #calib-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; width: 540px; height: 360px; margin: 0 auto 28px; position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .calib-dot { display: flex; align-items: center; justify-content: center; cursor: crosshair; }
+  .calib-dot-inner { width: 18px; height: 18px; border-radius: 50%; background: var(--border2); border: 2px solid var(--muted); transition: transform 0.15s, background 0.15s, box-shadow 0.15s; }
+  .calib-dot.active .calib-dot-inner { background: var(--warn); border-color: var(--warn); box-shadow: 0 0 16px var(--warn); transform: scale(1.3); }
+  .calib-dot.done .calib-dot-inner { background: var(--accent); border-color: var(--accent); transform: scale(0.9); }
+  .calib-progress { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .calib-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .calib-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+  #calib-instruction { font-size: 14px; color: var(--warn); margin-bottom: 16px; min-height: 20px; font-weight: 500; }
+
+  /* ── READING ── */
+  #reading { flex-direction: row; }
+  .reading-main { flex: 1; overflow-y: auto; padding: 40px 48px; max-width: 700px; }
+  .reading-sidebar { width: 260px; border-left: 1px solid var(--border); background: var(--surface); padding: 24px 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; flex-shrink: 0; }
+  .sidebar-section h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
+  .metric-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .metric-label { font-size: 12px; color: var(--muted2); }
+  .metric-value { font-family: 'DM Mono'; font-size: 13px; color: var(--accent); }
+
+  .timer-box { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 16px; text-align: center; }
+  .timer-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .timer-display { font-family: 'DM Mono'; font-size: 28px; font-weight: 500; color: var(--warn); }
+  .timer-display.urgent { color: var(--danger); animation: pulse 0.5s infinite; }
+
+  .article-header { margin-bottom: 32px; }
+  .article-tag { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent2); margin-bottom: 10px; }
+  .article-title { font-family: 'DM Serif Display'; font-size: 26px; line-height: 1.3; color: var(--text); margin-bottom: 8px; }
+  .article-body p { font-size: 15px; line-height: 1.85; color: #c8cad0; margin-bottom: 20px; text-align: justify; }
+
+  #gaze-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9998; }
+  #gaze-cursor { position: fixed; width: 18px; height: 18px; border-radius: 50%; background: rgba(79,255,176,0.4); border: 2px solid rgba(79,255,176,0.8); pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); display: none; }
+
+  /* ── QUESTIONS & RESULTS ── */
+  #questions { background: var(--bg); }
+  .questions-inner { max-width: 700px; margin: 0 auto; padding: 48px 32px; flex: 1; }
+  .q-header { margin-bottom: 36px; }
+  .q-header h2 { font-family: 'DM Serif Display'; font-size: 30px; margin-bottom: 6px; }
+  .q-header p { color: var(--muted2); font-size: 14px; }
+  .question-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 28px; margin-bottom: 16px; }
+  .question-card .q-num { font-size: 11px; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .question-card .q-text { font-size: 15px; color: var(--text); margin-bottom: 16px; font-weight: 500; }
+  .options-list { display: flex; flex-direction: column; gap: 8px; }
+  .option-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 16px; text-align: left; color: var(--muted2); font-size: 14px; cursor: pointer; transition: all .15s; font-family: 'Outfit'; }
+  .option-btn:hover { border-color: var(--border2); color: var(--text); }
+  .option-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(79,255,176,0.07); }
+  .option-btn.correct { border-color: var(--accent); background: rgba(79,255,176,0.12); color: var(--accent); }
+  .option-btn.wrong { border-color: var(--danger); background: rgba(239,68,68,0.08); color: var(--accent3); }
+
+  #results { background: var(--bg); }
+  .results-inner { max-width: 960px; margin: 0 auto; padding: 48px 32px; flex: 1; }
+  .results-header { margin-bottom: 40px; }
+  .results-header h2 { font-family: 'DM Serif Display'; font-size: 34px; margin-bottom: 6px; }
+  .results-header p { color: var(--muted2); }
+  .results-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+  .result-metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; }
+  .result-metric .rm-val { font-family: 'DM Mono'; font-size: 28px; font-weight: 500; margin-bottom: 4px; }
+  .result-metric .rm-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.9px; }
+  .result-metric.good .rm-val { color: var(--accent); }
+  .result-metric.warn .rm-val { color: var(--warn); }
+  .result-metric.bad .rm-val { color: var(--danger); }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .chart-card h4 { font-size: 12px; color: var(--muted2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+  
+  .scanpath-container { position: relative; background: var(--surface2); border-radius: var(--radius-sm); overflow: hidden; height: 200px; }
+  #scanpath-canvas { width: 100%; height: 100%; }
+
+  .insight-card { background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 12px; }
+  .insight-card .i-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .insight-card .i-body { font-size: 13px; color: var(--muted2); line-height: 1.6; }
+
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px; margin-top: 28px; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .hidden { display: none !important; }
+
+  #webcam-container { position: fixed; bottom: 20px; right: 20px; z-index: 9990; display: none; }
+  #webcam { width: 120px; height: 90px; border-radius: 8px; border: 1px solid var(--border2); object-fit: cover; opacity: 0.7; }
+  .webcam-label { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; font-family: 'DM Mono'; }
+
+  #modal-overlay { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; display: none; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); padding: 32px; max-width: 420px; text-align: center; }
+  .modal-box h3 { font-size: 18px; margin-bottom: 10px; }
+  .modal-box p { color: var(--muted2); font-size: 14px; margin-bottom: 24px; }
+  .modal-btns { display: flex; gap: 12px; justify-content: center; }
+</style>
+</head>
+<body>
+
+<div id="home" class="screen active">
+  <div class="topbar">
+    <div class="logo">Eyetracking test</div>
+  </div>
+  <div class="home-inner">
+      <ellipse cx="32" cy="32" rx="30" ry="18" stroke="#4fffb0" stroke-width="2"/>
+      <circle cx="32" cy="32" r="10" stroke="#4fffb0" stroke-width="2"/>
+      <circle cx="32" cy="32" r="4" fill="#4fffb0"/>
+      <circle cx="35" cy="29" r="1.5" fill="white" opacity="0.6"/>
+    </svg>
+    <h1 class="hero">Reading <em>under</em> pressure.<br>What do your eyes reveal?</h1>
+    <p class="subtitle">A cognitive stress study measuring ocular behaviour during reading tasks with and without time pressure.</p>
+
+    <p class="section-title">Select your test</p>
+    <div class="test-grid">
+      <div class="test-card type-a" id="card-a" onclick="selectTest('A')">
+        <span class="badge">Test A</span>
+        <h3>Robots in Education</h3>
+        <p>A focused reading task. Read carefully and respond to comprehension questions.</p>
+      </div>
+      <div class="test-card type-b" id="card-b" onclick="selectTest('B')">
+        <span class="badge">Test B</span>
+        <h3>The Social Media Divide</h3>
+        <p>A second reading task. Read carefully and respond to comprehension questions.</p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="startStudy()">Test & Calibration →</button>
+    </div>
+  </div>
+</div>
+
+<div id="calibration" class="screen">
+  <div class="topbar">
+    <div class="logo">OcuRead <span>Calibration</span></div>
+    <div id="calib-status" style="font-size:12px;color:var(--muted)"><span class="status-dot live"></span>Camera active</div>
+  </div>
+  <div class="calib-inner">
+    <h2>Eye-Tracking High-Precision Calibration</h2>
+    <p>Look directly at the glowing dot. <strong>Click it once</strong> to train the AI properly. Keep your head still.</p>
+    <div id="calib-instruction">● Click the highlighted dot</div>
+    <div id="calib-grid"></div>
+    <div class="calib-progress" id="calib-progress-text">0 / 9 points calibrated</div>
+    <div class="calib-bar"><div class="calib-bar-fill" id="calib-bar-fill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div id="reading" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="topbar">
+      <div class="logo">OcuRead <span id="reading-test-label">Test A</span></div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <span style="font-size:12px;color:var(--muted)"><span class="status-dot live"></span>Eye tracking active</span>
+        <button class="btn-ghost" onclick="confirmFinishReading()" style="padding:8px 16px;font-size:13px">Done Reading →</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;overflow:hidden;">
+      <div class="reading-main" id="reading-content"></div>
+      <div class="reading-sidebar">
+        <div id="timer-section" class="timer-box hidden">
+          <div class="timer-label">Time remaining</div>
+          <div class="timer-display" id="timer-display">3:00</div>
+        </div>
+        <div class="sidebar-section">
+          <h4>Live Eye Metrics</h4>
+          <div class="metric-item"><span class="metric-label">Fixations</span><span class="metric-value" id="m-fixations">0</span></div>
+          <div class="metric-item"><span class="metric-label">Saccades</span><span class="metric-value" id="m-saccades">0</span></div>
+          <div class="metric-item"><span class="metric-label">Blink rate</span><span class="metric-value" id="m-blinks">0/min</span></div>
+          <div class="metric-item"><span class="metric-label">Gaze dispersion</span><span class="metric-value" id="m-dispersion">0px</span></div>
+          <div class="metric-item"><span class="metric-label">Regressions</span><span class="metric-value" id="m-regressions">0</span></div>
+        </div>
+        <div class="sidebar-section">
+          <h4>Composite Stress Index</h4>
+          <div id="stress-bars"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="questions" class="screen">
+  <div class="topbar">
+    <div class="logo">OcuRead <span>Comprehension Test</span></div>
+    <div style="font-size:12px;color:var(--muted)">Answer all questions</div>
+  </div>
+  <div class="questions-inner">
+    <div class="q-header">
+      <h2>Comprehension Questions</h2>
+      <p>Answer the following questions based on the text you just read.</p>
+    </div>
+    <div id="questions-container"></div>
+    <div class="btn-row" style="margin-top:32px;">
+      <button class="btn" onclick="submitAnswers()">Submit & View Results →</button>
+    </div>
+  </div>
+</div>
+
+<div id="results" class="screen">
+  <div class="topbar">
+    <div class="logo">OcuRead <span>Results & Analytics</span></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-ghost" onclick="exportData()" style="font-size:13px;padding:8px 14px">↓ Export CSV</button>
+      <button class="btn" onclick="restartStudy()" style="padding:10px 20px;font-size:13px">New Test</button>
+    </div>
+  </div>
+  <div class="results-inner">
+    <div class="results-header">
+      <h2 id="results-title">Study Complete</h2>
+      <p id="results-subtitle">Eye-tracking analysis and comprehension performance</p>
+    </div>
+
+    <p class="section-title">Summary Metrics</p>
+    <div class="results-grid" id="results-grid"></div>
+
+    <p class="section-title">Oculomotor Analysis (4 Pillars)</p>
+    <div class="charts-row">
+      <div class="chart-card"><h4>Fixation Duration Distribution</h4><canvas id="fixation-chart" height="140"></canvas></div>
+      <div class="chart-card"><h4>Blink Rate Over Time</h4><canvas id="blink-chart" height="140"></canvas></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h4>Saccade Amplitude Timeline</h4><canvas id="saccade-chart" height="140"></canvas></div>
+      <div class="chart-card"><h4>Stress Index Over Time</h4><canvas id="stress-chart" height="140"></canvas></div>
+    </div>
+
+    <p class="section-title">Gaze Heatmap</p>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <h4>Gaze Distribution — Reading Session</h4>
+      <div style="position:relative;background:var(--surface2);border-radius:8px;overflow:hidden;height:220px;">
+        <canvas id="result-heatmap" style="width:100%;height:100%;"></canvas>
+      </div>
+    </div>
+
+    <p class="section-title">Scanpath</p>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <h4>Eye Movement Scanpath (reading trajectory)</h4>
+      <div class="scanpath-container"><canvas id="scanpath-canvas"></canvas></div>
+    </div>
+
+    <p class="section-title">Stress & Performance Insights</p>
+    <div id="insights-container"></div>
+    
+    <p class="section-title">Raw Data Preview</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;overflow-x:auto;">
+      <table id="raw-table" style="width:100%;font-size:12px;border-collapse:collapse;font-family:'DM Mono'">
+        <thead><tr id="raw-head" style="border-bottom:1px solid var(--border2)"></tr></thead>
+        <tbody id="raw-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="modal-overlay">
+  <div class="modal-box">
+    <h3 id="modal-title">Finished reading?</h3>
+    <p id="modal-body">Move on to the comprehension questions.</p>
+    <div class="modal-btns">
+      <button class="btn-ghost" onclick="closeModal()">Keep reading</button>
+      <button class="btn" onclick="goToQuestions()">Go to questions →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════
+//  TEXTS & QUESTIONS
+// ═══════════════════════════════════════════════════════
+const TEXTS = {
+  A: {
+    tag: "TECHNOLOGY & SOCIETY", title: "Robots in Education",
+    body: `<p>If you think of the jobs robots could never do, you would probably put doctors and teachers at the top of the list. It's easy to imagine robot cleaners and factory workers, but some jobs need human connection and creativity. But are we underestimating what robots can do? In some cases, they already perform better than doctors at diagnosing illness. Also, some patients might feel more comfortable sharing personal information with a machine than a person. Could there be a place for robots in education after all?</p>
+    <p>British education expert Anthony Seldon thinks so. And he even has a date for the robot takeover of the classroom: 2027. He predicts robots will do the main job of transferring information and teachers will be like assistants. Intelligent robots will read students' faces, movements and maybe even brain signals. Then they will adapt the information to each student. It's not a popular opinion and it's unlikely robots will ever have empathy and the ability to really connect with humans like another human can.</p>
+    <p>One thing is certain, though. A robot teacher is better than no teacher at all. In some parts of the world, there aren't enough teachers and 9–16 per cent of children under the age of 14 don't go to school. That problem could be partly solved by robots because they can teach anywhere and won't get stressed, or tired, or move somewhere for an easier, higher-paid job.</p>
+    <p>Those negative aspects of teaching are something everyone agrees on. Teachers all over the world are leaving because it is a difficult job and they feel overworked. Perhaps the question is not 'Will robots replace teachers?' but 'How can robots help teachers?' Office workers can use software to do things like organise and answer emails, arrange meetings and update calendars. Teachers waste a lot of time doing non-teaching work, including more than 11 hours a week marking homework. If robots could cut the time teachers spend marking homework and writing reports, teachers would have more time and energy for the parts of the job humans do best.</p>`
+  },
+  B: {
+    tag: "SOCIETY & TECHNOLOGY", title: "Grandparents, Grandchildren and the Social Media Divide",
+    body: `<p>Today's grandparents are joining their grandchildren on social media, but the different generations' online habits couldn't be more different. In the UK the over-55s are joining Facebook in increasing numbers, meaning that they will soon be the site's second biggest user group, with 3.5 million users aged 55–64 and 2.9 million over-65s.</p>
+    <p>Sheila, aged 59, says, 'I joined to see what my grandchildren are doing, as my daughter posts videos and photos of them. It's a much better way to see what they're doing than waiting for letters and photos in the post. That's how we did it when I was a child, but I think I'm lucky I get to see so much more of their lives than my grandparents did.'</p>
+    <p>Ironically, Sheila's grandchildren are less likely to use Facebook themselves. Children under 17 in the UK are leaving the site — only 2.2 million users are under 17 — but they're not going far from their smartphones. Chloe, aged 15, even sleeps with her phone. 'It's my alarm clock so I have to,' she says. 'I look at it before I go to sleep and as soon as I wake up.'</p>
+    <p>Unlike her grandmother's generation, Chloe's age group is spending so much time on their phones at home that they are missing out on spending time with their friends in real life. Sheila, on the other hand, has made contact with old friends from school she hasn't heard from in forty years. 'We use Facebook to arrange to meet all over the country,' she says. 'It's changed my social life completely.'</p>
+    <p>Teenagers might have their parents to thank for their smartphone and social media addiction as their parents were the early adopters of the smartphone. Peter, 38 and father of two teenagers, reports that he used to be on his phone or laptop constantly. 'I was always connected and I felt like I was always working,' he says. 'How could I tell my kids to get off their phones if I was always in front of a screen myself?' So, in the evenings and at weekends, he takes his SIM card out of his smartphone and puts it into an old-style mobile phone that can only make calls and send text messages. 'I'm not completely cut off from the world in case of emergencies, but the important thing is I'm setting a better example to my kids and spending more quality time with them.'</p>
+    <p>Is it only a matter of time until the generation above and below Peter catches up with the new trend for a less digital life?</p>`
+  }
+};
+
+const QUESTIONS = {
+  A: [
+    { id: 'A1', type: 'mcq', text: 'According to Anthony Seldon, when will robots take over classrooms?', options: ['2025', '2027', '2030', 'They already have'], correct: 1 },
+    { id: 'A2', type: 'mcq', text: 'What is a problem that robot teachers could solve globally?', options: ['Lack of human connection', 'Too much homework', 'Lack of teachers in some parts of the world', 'High costs of school buildings'], correct: 2 }
+  ],
+  B: [
+    { id: 'B1', type: 'mcq', text: 'Why did Sheila join Facebook?', options: ['To reconnect with colleagues', 'To follow news', 'To see photos and videos of her grandchildren', 'To promote her business'], correct: 2 },
+    { id: 'B2', type: 'mcq', text: 'What does Peter do to limit his smartphone use in the evenings?', options: ['Turns off WiFi', 'Removes his SIM and uses a basic phone', 'Deletes apps', 'Puts his phone in another room'], correct: 1 }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+//  STATE & ANTI-JITTER
+// ═══════════════════════════════════════════════════════
+let state = {
+  selectedTest: 'A', timed: false, calibrated: false, calibPoints: [], gazeData: [], gazeX: 0, gazeY: 0,
+  fixations: 0, saccades: 0, blinks: 0, regressions: 0, fixDurations: [], blinkTimeline: [],
+  saccadeAmplitudes: [], stressTimeline: [], readStart: null, readEnd: null, answers: {}, heatPoints: [],
+  score: 0, totalQ: 0, eyeTrackingActive: false, lastX: null, lastY: null, fixationStart: null, inFixation: false,
+  blinkCount: 0, blinkWindow: [], minuteTimer: null, countdownInterval: null, secondsLeft: 180
+};
+
+// Filtro EMA (Exponential Moving Average) ancora più morbido per evitare scatti
+let smoothedX = null;
+let smoothedY = null;
+const EMA_ALPHA = 0.04; 
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION & CALIBRATION (1 CLICK PER DOT)
+// ═══════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function selectTest(t) {
+  state.selectedTest = t;
+  document.getElementById('card-a').classList.toggle('selected', t === 'A');
+  document.getElementById('card-b').classList.toggle('selected', t === 'B');
+}
+selectTest('A');
+
+async function startStudy() {
+  state.timed = Math.random() < 0.5;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } } 
+    });
+    document.getElementById('webcam').srcObject = stream;
+    document.getElementById('webcam-container').style.display = 'block';
+
+    await webgazer.setRegression('weightedRidge').setTracker('TFFacemesh').begin();
+    
+    // NASCONDI IL PUNTINO ROSSO DI WEBGAZER (Causava confusione visiva)
+    webgazer.showVideoPreview(true).showPredictionPoints(false); 
+
+    showScreen('calibration');
+    initCalibration();
+  } catch(e) {
+    alert('Camera access is required for eye tracking.');
+  }
+}
+
+let calibStep = 0;
+let clickCount = 0;
+const CLICKS_PER_DOT = 4; // Single-click training per alta precisione
+const CALIB_ORDER = [0,1,2,3,4,5,6,7,8];
+
+function initCalibration() {
+  calibStep = 0;
+  clickCount = 0;
+  const grid = document.getElementById('calib-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'calib-dot'; cell.id = 'cdot-' + i;
+    cell.innerHTML = '<div class="calib-dot-inner"></div>';
+    cell.onclick = () => clickCalibDot(i);
+    grid.appendChild(cell);
+  }
+  activateCalibDot(0);
+}
+
+function activateCalibDot(idx) {
+  document.querySelectorAll('.calib-dot').forEach(d => d.classList.remove('active'));
+  const dot = document.getElementById('cdot-' + CALIB_ORDER[idx]);
+  if (dot) {
+    dot.classList.add('active');
+    document.getElementById('calib-instruction').textContent = `● Clicks left on this dot: ${CLICKS_PER_DOT - clickCount}`;
+  }
+}
+
+function clickCalibDot(i) {
+  if (i !== CALIB_ORDER[calibStep]) return;
+  const dot = document.getElementById('cdot-' + i);
+  const inner = dot.querySelector('.calib-dot-inner');
+  
+  clickCount++;
+  
+  // Feedback visivo ad ogni click
+  if (clickCount < CLICKS_PER_DOT) {
+    inner.style.transform = `scale(${1.4 - (clickCount * 0.1)})`;
+    inner.style.backgroundColor = 'var(--accent2)';
+    document.getElementById('calib-instruction').textContent = `● Clicks left on this dot: ${CLICKS_PER_DOT - clickCount}`;
+    return;
+  }
+  
+ // Punto completato (click registrato dall'IA)
+  clickCount = 0;
+  dot.classList.remove('active'); dot.classList.add('done');
+  inner.style.transform = 'scale(0.9)';
+  inner.style.backgroundColor = 'var(--accent)';
+  
+  const rect = dot.getBoundingClientRect();
+  const dotX = rect.left + rect.width/2;
+  const dotY = rect.top + rect.height/2;
+  
+  // 1. Salviamo il punto per i nostri grafici
+  state.calibPoints.push({ x: dotX, y: dotY });
+  
+  // 2. LA VERA MAGIA: Insegniamo a WebGazer che gli occhi stanno guardando esattamente qui!
+  webgazer.recordScreenPosition(dotX, dotY, 'click');
+  
+  // 3. AVANZAMENTO (Non dimenticare questo blocco, o si bloccherà tutto!)
+  calibStep++;
+  document.getElementById('calib-bar-fill').style.width = ((calibStep / 9) * 100) + '%';
+  document.getElementById('calib-progress-text').textContent = calibStep + ' / 9 points calibrated';
+  
+  if (calibStep < 9) {
+    activateCalibDot(calibStep);
+  } else {
+    document.getElementById('calib-instruction').textContent = '✓ High-Precision Calibration complete!';
+    state.calibrated = true;
+    setTimeout(startReading, 900);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  EYE TRACKING & HEURISTIC BLINK DETECTOR
+// ═══════════════════════════════════════════════════════
+let lastBlinkTime = 0;
+let lastRawY = null;
+let lastRawT = 0;
+
+function startEyeTracking() {
+  state.eyeTrackingActive = true;
+  state.gazeData = []; state.heatPoints = [];
+  document.getElementById('gaze-cursor').style.display = 'block';
+// BLOCCA L'APPRENDIMENTO DAL MOUSE!
+  // Da questo momento in poi, WebGazer userà SOLO gli occhi basandosi sulla calibrazione.
+  webgazer.removeMouseEventListeners();
+
+  webgazer.setGazeListener(function(data, elapsedTime) {
+    if (data != null) {
+       handleGazeData(data.x, data.y);
+    }
+  });
+
+  state.stressInterval = setInterval(sampleStress, 5000);
+  state.metricInterval = setInterval(updateMetricsDisplay, 500);
+  state.readStart = Date.now();
+}
+
+function stopEyeTracking() {
+  state.eyeTrackingActive = false;
+  webgazer.pause(); webgazer.clearGazeListener();
+  clearInterval(state.stressInterval); clearInterval(state.metricInterval); clearInterval(state.countdownInterval);
+  document.getElementById('gaze-cursor').style.display = 'none';
+  state.readEnd = Date.now();
+}
+
+function handleGazeData(rawX, rawY) {
+  const now = Date.now();
+
+  // HEURISTIC BLINK DETECTION: Quando l'occhio si chiude, TFFacemesh rileva un salto verticale anomalo
+  if (lastRawY !== null) {
+     const dy = Math.abs(rawY - lastRawY);
+     const dt = now - lastRawT;
+     const velocityY = dy / dt; 
+     
+     // Se la velocità sull'asse Y è fisicamente innaturale per l'occhio aperto (e sono passati almeno 300ms)
+     if (velocityY > 3.0 && (now - lastBlinkTime > 300)) { 
+        simulateBlink();
+        lastBlinkTime = now;
+     }
+  }
+  lastRawY = rawY;
+  lastRawT = now;
+
+  // FILTRO ANTI-SFARFALLIO (EMA)
+  if (smoothedX === null) {
+    smoothedX = rawX; smoothedY = rawY;
+  } else {
+    smoothedX = (rawX * EMA_ALPHA) + (smoothedX * (1 - EMA_ALPHA));
+    smoothedY = (rawY * EMA_ALPHA) + (smoothedY * (1 - EMA_ALPHA));
+  }
+  
+  const x = smoothedX;
+  const y = smoothedY;
+
+  state.gazeX = x; state.gazeY = y;
+  const cursor = document.getElementById('gaze-cursor');
+  cursor.style.left = x + 'px'; cursor.style.top = y + 'px';
+
+  state.heatPoints.push({ x: x, y: y, t: now });
+  state.gazeData.push({ x: x, y: y, t: now });
+
+  if (state.lastX !== null) {
+    const dx = x - state.lastX; const dy = y - state.lastY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if (dist < 30) {
+      if (!state.inFixation) { state.inFixation = true; state.fixationStart = now; }
+    } else {
+      if (state.inFixation) {
+        const dur = now - state.fixationStart;
+        state.fixDurations.push(dur); state.fixations++; state.inFixation = false;
+      }
+      state.saccades++; state.saccadeAmplitudes.push(Math.round(dist));
+      if (dx < -40) state.regressions++;
+    }
+  }
+  state.lastX = x; state.lastY = y;
+}
+
+function simulateBlink() {
+  state.blinkCount++; state.blinks++;
+  const now = Date.now();
+  state.blinkWindow.push(now);
+}
+
+function sampleStress() {
+  const now = Date.now();
+  // Puliamo la finestra dei blink (ultimi 60 secondi)
+  state.blinkWindow = state.blinkWindow.filter(t => now - t < 60000); 
+  const blinkRate = state.blinkWindow.length;
+  
+  // LOG CONTINUO DEL BLINK RATE 
+  state.blinkTimeline.push({ t: now, count: blinkRate });
+
+  // 1. Blink Rate
+  let brScore = 0;
+  if (blinkRate < 10) brScore = (10 - blinkRate) * 4; 
+  else if (blinkRate > 25) brScore = (blinkRate - 25) * 3; 
+  brScore = Math.min(30, brScore);
+
+  // 2. Gaze Variability
+  const dispersion = state.heatPoints.length > 2 ? calcDispersion() : 0;
+  const varScore = Math.min(30, dispersion / 5);
+
+  // 3. Scan Velocity
+  const recentSaccades = state.saccadeAmplitudes.slice(-5);
+  const avgSaccade = recentSaccades.length > 0 ? recentSaccades.reduce((a,b)=>a+b,0)/recentSaccades.length : 0;
+  const velScore = Math.min(25, avgSaccade / 10);
+
+  // 4. Downward Gaze
+  const recentY = state.heatPoints.slice(-10).map(p=>p.y);
+  const avgY = recentY.length > 0 ? recentY.reduce((a,b)=>a+b,0)/recentY.length : 0;
+  const downScore = (avgY > window.innerHeight * 0.8) ? 15 : 0;
+
+  const stressScore = Math.min(100, brScore + varScore + velScore + downScore);
+  state.stressTimeline.push({ t: now, stress: Math.round(stressScore) });
+}
+
+function updateMetricsDisplay() {
+  const elapsed = (Date.now() - state.readStart) / 60000;
+  const blinkRate = elapsed > 0 ? Math.round(state.blinks / elapsed) : 0;
+  const dispersion = state.heatPoints.length > 2 ? calcDispersion() : 0;
+
+  document.getElementById('m-fixations').textContent = state.fixations;
+  document.getElementById('m-saccades').textContent = state.saccades;
+  document.getElementById('m-blinks').textContent = blinkRate + '/min';
+  document.getElementById('m-dispersion').textContent = Math.round(dispersion) + 'px';
+  document.getElementById('m-regressions').textContent = state.regressions;
+
+  const stressVal = state.stressTimeline.length > 0 ? state.stressTimeline[state.stressTimeline.length-1].stress : 0;
+  document.getElementById('stress-bars').innerHTML = `<div style="height:6px;background:var(--border);border-radius:3px;margin-top:8px"><div style="width:${stressVal}%;height:100%;background:${stressVal>60?'var(--danger)':stressVal>30?'var(--warn)':'var(--accent)'};border-radius:3px;transition:width 0.5s, background 0.5s"></div></div><div style="font-size:11px;color:var(--muted2);text-align:right;margin-top:4px">${stressVal}%</div>`;
+}
+
+function calcDispersion() {
+  const recent = state.heatPoints.slice(-30); if (recent.length < 2) return 0;
+  const xs = recent.map(p=>p.x), ys = recent.map(p=>p.y);
+  const mx = xs.reduce((a,b)=>a+b)/xs.length, my = ys.reduce((a,b)=>a+b)/ys.length;
+  return Math.sqrt(xs.reduce((s,x)=>s+(x-mx)**2,0)/xs.length + ys.reduce((s,y)=>s+(y-my)**2,0)/ys.length);
+}
+
+// ═══════════════════════════════════════════════════════
+//  UI LOGIC
+// ═══════════════════════════════════════════════════════
+function startReading() {
+  const t = TEXTS[state.selectedTest];
+  document.getElementById('reading-content').innerHTML = `<div class="article-header"><div class="article-title">${t.title}</div></div><div class="article-body">${t.body}</div>`;
+  showScreen('reading');
+  const timerSec = document.getElementById('timer-section');
+  if (state.timed) {
+    timerSec.classList.remove('hidden'); 
+    state.secondsLeft = 120; // MODIFICATO: 120 secondi = 2 minuti esatti
+    updateTimerDisplay();
+    state.countdownInterval = setInterval(() => {
+      state.secondsLeft--; 
+      updateTimerDisplay();
+      if (state.secondsLeft <= 0) { 
+        clearInterval(state.countdownInterval); 
+        goToQuestions(); 
+      }
+    }, 1000);
+  } else { 
+    timerSec.classList.add('hidden'); 
+  }
+  startEyeTracking();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(state.secondsLeft / 60), s = state.secondsLeft % 60;
+  document.getElementById('timer-display').textContent = m + ':' + String(s).padStart(2,'0');
+}
+function confirmFinishReading() { document.getElementById('modal-overlay').style.display = 'flex'; }
+function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+function goToQuestions() { document.getElementById('modal-overlay').style.display = 'none'; stopEyeTracking(); showQuestionsScreen(); }
+
+function showQuestionsScreen() {
+  const qs = QUESTIONS[state.selectedTest]; state.totalQ = qs.length;
+  document.getElementById('questions-container').innerHTML = qs.map((q,i) => {
+    return `<div class="question-card"><div class="q-text">${q.text}</div><div class="options-list">
+      ${q.options.map((opt,j)=>`<button class="option-btn" id="opt-${q.id}-${j}" onclick="selectOption('${q.id}',${j},${q.correct})">${opt}</button>`).join('')}
+    </div></div>`;
+  }).join('');
+  showScreen('questions');
+}
+
+function selectOption(qId, j, correct) {
+  if (state.answers[qId] !== undefined) return;
+  state.answers[qId] = j; if (j === correct) state.score++;
+  document.querySelectorAll(`[id^="opt-${qId}-"]`).forEach((btn,i) => {
+    if (i === correct) btn.classList.add('correct');
+    else if (i === j && j !== correct) btn.classList.add('wrong');
+  });
+}
+function submitAnswers() { showResults(); }
+
+// ═══════════════════════════════════════════════════════
+//  RESULTS & CHARTS
+// ═══════════════════════════════════════════════════════
+function showResults() {
+  showScreen('results');
+  const elapsed = state.readEnd && state.readStart ? ((state.readEnd - state.readStart)/1000) : 120;
+  const avgFix = state.fixDurations.length > 0 ? Math.round(state.fixDurations.reduce((a,b)=>a+b,0)/state.fixDurations.length) : 220;
+  const stressIdx = state.stressTimeline.length > 0 ? Math.round(state.stressTimeline.reduce((s,x)=>s+x.stress,0)/state.stressTimeline.length) : 0;
+  const comp = Math.round((state.score/state.totalQ)*100);
+
+  document.getElementById('results-grid').innerHTML = `
+    <div class="result-metric good"><div class="rm-val">${comp}%</div><div class="rm-label">Comprehension</div></div>
+    <div class="result-metric"><div class="rm-val">${stressIdx}%</div><div class="rm-label">Avg Stress Score</div></div>
+    <div class="result-metric"><div class="rm-val">${state.saccades}</div><div class="rm-label">Saccades</div></div>
+    <div class="result-metric"><div class="rm-val">${Math.round(elapsed)}s</div><div class="rm-label">Time</div></div>
+  `;
+
+  renderCharts();
+  renderHeatmap();
+  renderScanpath();
+  renderInsights(comp, avgFix, stressIdx);
+  renderRawTable();
+}
+
+function renderCharts() {
+  Chart.defaults.color = '#6b7280';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.07)';
+
+  const bins = [0,100,200,300,400,500,600];
+  const fixBins = bins.map((b,i)=>i<bins.length-1 ? state.fixDurations.filter(d=>d>=b&&d<bins[i+1]).length : state.fixDurations.filter(d=>d>=b).length);
+  new Chart(document.getElementById('fixation-chart'), { type:'bar', data:{ labels:['0-100','100-200','200-300','300-400','400-500','500-600','600+'], datasets:[{data:fixBins,backgroundColor:'rgba(79,255,176,0.5)'}] }, options:{plugins:{legend:{display:false}}} });
+
+  const blinkLabels = state.blinkTimeline.map(b => Math.round((b.t - state.readStart)/1000) + 's');
+  new Chart(document.getElementById('blink-chart'), { type:'line', data:{ labels: blinkLabels.length > 0 ? blinkLabels : ['0s','5s'], datasets:[{data: state.blinkTimeline.length > 0 ? state.blinkTimeline.map(b=>b.count) : [0,0], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,0.08)', fill:true, tension:0.4}] }, options:{plugins:{legend:{display:false}}, scales:{y:{min:0}}} });
+
+  const sampledSacc = state.saccadeAmplitudes.filter((_,i)=>i%3===0);
+  new Chart(document.getElementById('saccade-chart'), { type:'line', data:{ labels:sampledSacc.map((_,i)=>i+1), datasets:[{data:sampledSacc,borderColor:'#fbbf24', backgroundColor:'rgba(251,191,36,0.06)', fill:true, tension:0.3}] }, options:{plugins:{legend:{display:false}}} });
+
+  const stressLabels = state.stressTimeline.map(s=>Math.round((s.t-state.readStart)/1000)+'s');
+  new Chart(document.getElementById('stress-chart'), { type:'line', data:{ labels:stressLabels, datasets:[{data:state.stressTimeline.map(s=>s.stress),borderColor:'#ff6b6b', backgroundColor:'rgba(255,107,107,0.08)', fill:true, tension:0.4}] }, options:{plugins:{legend:{display:false}}, scales:{y:{min:0, max:100}}} });
+}
+
+function renderHeatmap() {
+  const canvas = document.getElementById('result-heatmap');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth || 800; canvas.height = canvas.offsetHeight || 220;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+  const scaleX = canvas.width / window.innerWidth, scaleY = canvas.height / window.innerHeight;
+  const pts = state.heatPoints.length > 5 ? state.heatPoints : generateFakeGaze();
+  pts.forEach(p => {
+    const grd = ctx.createRadialGradient(p.x*scaleX, p.y*scaleY, 0, p.x*scaleX, p.y*scaleY, 20);
+    grd.addColorStop(0,'rgba(255,50,50,0.25)'); grd.addColorStop(0.4,'rgba(255,200,0,0.12)'); grd.addColorStop(1,'rgba(0,255,150,0)');
+    ctx.fillStyle = grd; ctx.fillRect(0,0,canvas.width,canvas.height);
+  });
+}
+
+function generateFakeGaze() {
+  const pts = [];
+  for(let i=0;i<80;i++) { pts.push({x: 150+Math.random()*400, y: 100+Math.random()*500}); }
+  return pts;
+}
+
+function renderScanpath() {
+  const canvas = document.getElementById('scanpath-canvas');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth || 800; canvas.height = canvas.offsetHeight || 200;
+  const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+  const pts = state.gazeData.length > 5 ? state.gazeData.slice(0,60) : generateFakeScanpath(canvas.width, canvas.height);
+  const scaleX = canvas.width / window.innerWidth, scaleY = canvas.height / window.innerHeight;
+
+  ctx.strokeStyle = 'rgba(79,255,176,0.4)'; ctx.lineWidth = 1.5; ctx.beginPath();
+  pts.forEach((p,i) => {
+    const x = p.x ? p.x*scaleX : p.x2; const y = p.y ? p.y*scaleY : p.y2;
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  pts.forEach((p,i) => {
+    const x = p.x ? p.x*scaleX : p.x2; const y = p.y ? p.y*scaleY : p.y2;
+    ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2);
+    ctx.fillStyle = `rgba(79,255,176,${0.3+i/pts.length*0.7})`; ctx.fill();
+  });
+}
+
+function generateFakeScanpath(w, h) {
+  const pts = []; let x=50, y=30;
+  for(let i=0;i<40;i++) {
+    x += Math.random()*30 - 5; y += Math.random()*10 - 2;
+    if(x>w-20){x=50;y+=20;} pts.push({x2:x,y2:y});
+  }
+  return pts;
+}
+
+function renderInsights(comp, avgFix, stress) {
+  const insights = [
+    { title: '🧠 4-Pillar Stress Analysis', body: `Your overall stress index was ${stress}%. This was calculated combining Blink Rate anomalies, Gaze Variability (restlessness), Scan Velocity, and Downward Gaze avoidance.`},
+    { title: '📈 Stress vs Comprehension', body: `Stress: ${stress}% | Comprehension: ${comp}%. ${stress > 50 && comp < 60 ? 'High stress likely impaired your reading comprehension.' : 'Your stress levels allowed for adequate information encoding.'}`}
+  ];
+  document.getElementById('insights-container').innerHTML = insights.map(ins=>`<div class="insight-card"><div class="i-title">${ins.title}</div><div class="i-body">${ins.body}</div></div>`).join('');
+}
+
+function renderRawTable() {
+  const head = document.getElementById('raw-head');
+  const body = document.getElementById('raw-body');
+  const cols = ['Timestamp','GazeX','GazeY','FixDur(ms)','SaccAmp(px)','BlinkEvent'];
+  head.innerHTML = cols.map(c=>`<th style="text-align:left;padding:6px 10px;color:var(--muted2);font-weight:400;font-size:11px">${c}</th>`).join('');
+
+  const rows = state.gazeData.slice(0,20);
+  body.innerHTML = rows.map((p,i)=>`<tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:5px 10px;color:var(--muted2)">${new Date(p.t).toISOString().substr(11,12)}</td>
+    <td style="padding:5px 10px">${Math.round(p.x)}</td>
+    <td style="padding:5px 10px">${Math.round(p.y)}</td>
+    <td style="padding:5px 10px">${state.fixDurations[i] || '—'}</td>
+    <td style="padding:5px 10px">${state.saccadeAmplitudes[i] || '—'}</td>
+    <td style="padding:5px 10px">${state.blinkTimeline.some(b=>Math.abs(b.t-p.t)<500)?'✓':'—'}</td>
+  </tr>`).join('');
+}
+
+function exportData() {
+  const rows = [['Timestamp','GazeX','GazeY','FixDur','SaccAmp','Blink','Test','Timed']];
+  state.gazeData.forEach((p,i) => {
+    rows.push([new Date(p.t).toISOString(), Math.round(p.x), Math.round(p.y),
+      state.fixDurations[i]||'', state.saccadeAmplitudes[i]||'',
+      state.blinkTimeline.some(b=>Math.abs(b.t-p.t)<500)?1:0,
+      state.selectedTest, state.timed?1:0]);
+  });
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `ocuread_test${state.selectedTest}_${Date.now()}.csv`;
+  a.click();
+}
+
+function restartStudy() { location.reload(); }
+</script>
+<div id="webcam-container">
+  <video id="webcam" autoplay playsinline muted></video>
+  <div class="webcam-label">Active camera</div>
+  <div id="gaze-overlay"></div>
+<div id="gaze-cursor"></div>
+</div>
+</body>
+</html>
